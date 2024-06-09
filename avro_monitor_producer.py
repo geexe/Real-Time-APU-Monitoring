@@ -63,19 +63,35 @@ class User(object):
         }
     """
 
-    def __init__(self, timestamp, TP2, TP3, H1, DV_pressure, Reservoirs):
+    def __init__(self, timestamp, TP2, TP3, H1, DV_pressure, Reservoirs, Oil_temperature, Motor_current,
+                 COMP, DV_eletric, Towers, MPG, LPS, Pressure_switch, Oil_level, Caudal_impulses, y):
         self.timestamp = timestamp
         self.TP2 = TP2
         self.TP3 = TP3
         self.H1 = H1
         self.DV_pressure = DV_pressure
         self.Reservoirs = Reservoirs
+        self.Oil_temperature = Oil_temperature
+        self.Motor_current = Motor_current
+        self.COMP = COMP
+        self.DV_eletric = DV_eletric
+        self.Towers = Towers
+        self.MPG = MPG
+        self.LPS = LPS
+        self.Pressure_switch = Pressure_switch
+        self.Oil_level = Oil_level
+        self.Caudal_impulses = Caudal_impulses
+        self.y = y
 
 
 def user_to_dict(user, ctx):
     
     # User._address must not be serialized; omit from dict
-    return dict(timestamp=user.timestamp, TP2=user.TP2, TP3=user.TP3, H1=user.H1, DV_pressure=user.DV_pressure, Reservoirs=user.Reservoirs
+    return dict(timestamp=user.timestamp, TP2=user.TP2, TP3=user.TP3, H1=user.H1, DV_pressure=user.DV_pressure, 
+                Reservoirs=user.Reservoirs, Oil_temperature=user.Oil_temperature, Motor_current=user.Motor_current,
+                COMP=user.COMP, DV_eletric=user.DV_eletric, Towers=user.Towers, MPG=user.MPG, LPS=user.LPS,
+                Pressure_switch=user.Pressure_switch, Oil_level=user.Oil_level, Caudal_impulses=user.Caudal_impulses,
+                y=user.y
                 )
 
 
@@ -146,12 +162,17 @@ def main(args):
         
         df = pd.read_csv("data.csv")
         df['y'] = 0
-        data = df.iloc[1,1:7]
+        data = df.iloc[1,1:]
         print(data)
 
         user = User(timestamp=str(data["timestamp"]), TP2=float(data["TP2"]), TP3= float(data["TP3"]),
-                    H1=float(data["H1"]),DV_pressure=float(data["DV_pressure"]), Reservoirs=float(data["Reservoirs"]))
-            
+                    H1=float(data["H1"]),DV_pressure=float(data["DV_pressure"]), 
+                    Reservoirs=float(data["Reservoirs"]), Oil_temperature=float(data["Oil_temperature"]), 
+                    Motor_current=float(data["Motor_current"]), COMP=int(data["COMP"]), DV_eletric=int(data["DV_eletric"]),
+                    Towers=int(data["Towers"]), MPG=int(data["MPG"]), LPS=int(data["LPS"]),
+                    Pressure_switch=int(data["Pressure_switch"]), Oil_level=int(data["Oil_level"]), 
+                    Caudal_impulses=int(data["Caudal_impulses"]), y=int(data["y"])
+        )
         producer.produce(topic=topic,
                              key="timestamp",
                              value=avro_serializer(user, SerializationContext(topic, MessageField.VALUE)),
@@ -178,4 +199,4 @@ if __name__ == '__main__':
     main(parser.parse_args())
 
 #Example
-# python avro_producer.py -b "localhost:9092" -t "BTCUSDT" -s "http://localhost:8081"
+# python avro_monitor_producer.py -b "localhost:9092" -t "raw2" -s "http://localhost:8081"

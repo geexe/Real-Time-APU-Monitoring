@@ -18,6 +18,13 @@
 
 # A simple example demonstrating use of AvroDeserializer.
 
+#pip install confluent_kafka
+#pip install pandas
+#pip install pycaret
+#pip install river
+#pip install scikit-learn
+#pip install fastavro
+
 import argparse
 import os
 
@@ -27,12 +34,12 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from time import sleep
 import pandas as pd
-#from pycaret.regression import load_model, predict_model
+from pycaret.regression import load_model, predict_model
 from sklearn.metrics import mean_squared_error
 
 from river import linear_model
 from river import tree
-#model = linear_model.LinearRegression()
+model = linear_model.LinearRegression()
 model = tree.HoeffdingTreeRegressor(
         grace_period=100,
         model_selector_decay=0.9
@@ -60,13 +67,25 @@ class User(object):
     """
 
     # Edit to monitoring data
-    def __init__(self, timestamp, TP2, TP3, H1, DV_pressure, Reservoirs):
+    def __init__(self, timestamp, TP2,TP3,H1,DV_pressure,Reservoirs,Oil_temperature,Motor_current
+                 ,COMP,DV_eletric,Towers,MPG,LPS,Pressure_switch,Oil_level,Caudal_impulses,y):
         self.timestamp = timestamp
-        self.TP2 = TP2
+        self.TP2 = TP2 
         self.TP3 = TP3
         self.H1 = H1
         self.DV_pressure = DV_pressure
         self.Reservoirs = Reservoirs
+        self.Oil_temperature = Oil_temperature
+        self.Motor_current = Motor_current
+        self.COMP = COMP
+        self.DV_eletric = DV_eletric
+        self.Towers = Towers
+        self.MPG = MPG
+        self.LPS = LPS
+        self.Pressure_switch = Pressure_switch
+        self.Oil_level = Oil_level
+        self.Caudal_impulses = Caudal_impulses
+        self.y = y
 
 
 def dict_to_user(obj, ctx):
@@ -89,7 +108,11 @@ def dict_to_user(obj, ctx):
 
     # Edit to monitoring data
     return User(timestamp=obj["timestamp"], TP2=obj["TP2"], TP3= obj["TP3"],
-                    H1=obj["H1"],DV_pressure=obj["DV_pressure"], Reservoirs=obj["Reservoirs"])
+                H1=obj["H1"],DV_pressure=obj["DV_pressure"], Reservoirs=obj["Reservoirs"]
+                ,Oil_temperature=obj["Oil_temperature"], Motor_current=obj["Motor_current"]
+                ,COMP=obj['COMP'], DV_eletric=obj['DV_eletric'],Towers=obj['Towers']
+                ,MPG=obj['MPG'], LPS=obj['LPS'], Pressure_switch=obj['Pressure_switch'],
+                Oil_level=obj['Oil_level'],Caudal_impulses=obj['Caudal_impulses'], y=obj["y"])
 
 
 
@@ -157,22 +180,27 @@ def main(args):
             
             data = {'timstamp':user.timestamp, 'TP2':user.TP2,
                     'TP3':user.TP3,'H1':user.H1,
-                    'DV_pressure':user.DV_pressure, 'Reservoirs':user.Reservoirs}
+                    'DV_pressure':user.DV_pressure, 'Reservoirs':user.Reservoirs
+                    ,'Oil_temperature':user.Oil_temperature, 'Motor_current' : user.Motor_current
+                    ,'COMP': user.COMP,'DV_eletric':user.DV_eletric,'Towers' : user.Towers
+                    ,'MPG': user.MPG,'LPS':user.LPS, 'Pressure_switch' : user.Pressure_switch
+                    ,'Oil_level':user.Oil_level, 'Caudal_impulses':user.Caudal_impulses, 'y':user.y }
             print(data)
             
-            '''df = pd.DataFrame(data,index=[user.closeTime])
+            df = pd.DataFrame(data,index=[user.timestamp])
           
-            saved_lr = load_model('model_et')
+            saved_lr = load_model('model5000')
             predictions = predict_model(saved_lr, data=df)
             
-            #print(type(predictions))
-            print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.lastPrice)
-            print(mean_squared_error([user.lastPrice] , [predictions.iloc[0]['prediction_label']] ) )
+            # Use offline (Batch) model to predict result from streaming
+            print(type(predictions))
+            print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.y)
+            print(mean_squared_error([user.y] , [predictions.iloc[0]['prediction_label']] ) )
 
+            # Online (Real-time) model to predict result from streaming
             y_pred = model.predict_one(data)
-            model.learn_one(data, user.lastPrice)
-            print("y_pred = ",y_pred)'''
-
+            model.learn_one(data, user.y)
+            print("y_pred = ",y_pred)
 
 
         except KeyboardInterrupt:
@@ -181,7 +209,6 @@ def main(args):
         sleep(3)
 
     consumer.close()
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="AvroDeserializer example")
@@ -201,3 +228,4 @@ if __name__ == '__main__':
 
 # Example
 # python avro_consumer.py -b "localhost:9092" -s "http://localhost:8081" -t "BTCUSDT" -g "btc"
+# python avro_monitor_consumer.py -b "localhost:9092" -s "http://localhost:8081" -t "raw2"

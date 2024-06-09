@@ -26,6 +26,50 @@
 		{
             "name": "Reservoirs",
             "type": "double"
+        },
+		{
+            "name": "Oil_temperature",
+            "type": "double"
+        },
+        {
+            "name": "Motor_current",
+            "type": "double"
+        },
+        {
+            "name": "COMP",
+            "type": "int"
+        },
+        {
+            "name": "DV_eletric",
+            "type": "int"
+        },
+        {
+            "name": "Towers",
+            "type": "int"
+        },
+        {
+            "name": "MPG",
+            "type": "int"
+        },
+        {
+            "name": "LPS",
+            "type": "int"
+        },
+        {
+            "name": "Pressure_switch",
+            "type": "int"
+        },
+        {
+            "name": "Oil_level",
+            "type": "int"
+        },
+        {
+            "name": "Caudal_impulses",
+            "type": "int"
+        },        
+        {
+            "name": "y",
+            "type": "int"
         }
     ]
 }
