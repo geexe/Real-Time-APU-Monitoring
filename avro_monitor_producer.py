@@ -187,24 +187,30 @@ def main(args):
         df.loc[(df['timestamp'] >= '2020-07-08 17:30:00') & (df['timestamp'] <= '2020-07-08 19:00:00'), 'y'] = 2
         df.loc[(df['timestamp'] >= '2020-07-15 14:30:00') & (df['timestamp'] <= '2020-07-15 19:00:00'), 'y'] = 1
         df.loc[(df['timestamp'] >= '2020-07-17 04:30:00') & (df['timestamp'] <= '2020-07-17 05:30:00'), 'y'] = 2
-        data = df.iloc[1,1:]
-        print(data)
+        split = 0.55
+        # df_offline = df.iloc[0:int(split*len(df)),]
+        df_online = df.iloc[int(split*len(df)):,]
+        # df_online = df_online.loc[df_online["y"] == 2]
 
-        user = User(timestamp=str(data["timestamp"]), TP2=float(data["TP2"]), TP3= float(data["TP3"]),
-                    H1=float(data["H1"]),DV_pressure=float(data["DV_pressure"]), 
-                    Reservoirs=float(data["Reservoirs"]), Oil_temperature=float(data["Oil_temperature"]), 
-                    Motor_current=float(data["Motor_current"]), COMP=int(data["COMP"]), DV_eletric=int(data["DV_eletric"]),
-                    Towers=int(data["Towers"]), MPG=int(data["MPG"]), LPS=int(data["LPS"]),
-                    Pressure_switch=int(data["Pressure_switch"]), Oil_level=int(data["Oil_level"]), 
-                    Caudal_impulses=int(data["Caudal_impulses"]), y=int(data["y"])
-        )
-        producer.produce(topic=topic,
-                             key="timestamp",
-                             value=avro_serializer(user, SerializationContext(topic, MessageField.VALUE)),
-                             on_delivery=delivery_report)
-        
-        sleep(3)
-        producer.poll(0.0)
+        for i in range(len(df_online)):
+            data = df_online.iloc[i,1:]
+            print(data)
+
+            user = User(timestamp=str(data["timestamp"]), TP2=float(data["TP2"]), TP3= float(data["TP3"]),
+                        H1=float(data["H1"]),DV_pressure=float(data["DV_pressure"]), 
+                        Reservoirs=float(data["Reservoirs"]), Oil_temperature=float(data["Oil_temperature"]), 
+                        Motor_current=float(data["Motor_current"]), COMP=int(data["COMP"]), DV_eletric=int(data["DV_eletric"]),
+                        Towers=int(data["Towers"]), MPG=int(data["MPG"]), LPS=int(data["LPS"]),
+                        Pressure_switch=int(data["Pressure_switch"]), Oil_level=int(data["Oil_level"]), 
+                        Caudal_impulses=int(data["Caudal_impulses"]), y=int(data["y"])
+            )
+            producer.produce(topic=topic,
+                                key="timestamp",
+                                value=avro_serializer(user, SerializationContext(topic, MessageField.VALUE)),
+                                on_delivery=delivery_report)
+            
+            sleep(1)
+            producer.poll(0.0)
         
     print("\nFlushing records...")
     producer.flush()

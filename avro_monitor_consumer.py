@@ -39,9 +39,18 @@ from sklearn.metrics import mean_squared_error
 
 from river import linear_model
 from river import tree
+from river import multiclass
+from river import neighbors
+from river import naive_bayes
+from river import datasets
+from river import evaluate
+from river import metrics
+
+
 model = tree.HoeffdingTreeClassifier(
         grace_period=100,
     )
+# model2 = naive_bayes.BernoulliNB()
 
 class User(object):
 
@@ -141,20 +150,26 @@ def main(args):
             predictions = predict_model(saved_lr, data=df)
             
             # Use offline (Batch) model to predict result from streaming
-            print(type(predictions))
+            # print(type(predictions))
             print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.y)
             print(mean_squared_error([user.y] , [predictions.iloc[0]['prediction_label']] ) )
 
             # Online (Real-time) model to predict result from streaming
             y_pred = model.predict_one(data)
+            y_prob = model.predict_proba_one(data)
             model.learn_one(data, user.y)
             print("y_pred = ",y_pred)
+            print("y_prob = ",y_prob)
+            
+            # y_pred2 = model2.predict_one(data)
+            # model2.learn_one(data, user.y)
+            # print("y_pred2 = ",y_pred2)
 
 
         except KeyboardInterrupt:
             break
 
-        sleep(3)
+        sleep(1)
 
     consumer.close()
 
