@@ -161,7 +161,32 @@ def main(args):
         # Serve on_delivery callbacks from previous calls to produce()
         
         df = pd.read_csv("data.csv")
+
+        # Add column y with initial value = 0 ("Low")
         df['y'] = 0
+
+        # Add y on rows where y = 1 ("Medium") and y = 2 ("High")
+        df.loc[(df['timestamp'] >= '2020-04-12 11:50:00') & (df['timestamp'] <= '2020-04-12 23:30:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-04-18 00:00:00') & (df['timestamp'] <= '2020-04-18 23:59:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-04-19 00:00:00') & (df['timestamp'] <= '2020-04-19 01:30:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-04-29 03:20:00') & (df['timestamp'] <= '2020-04-29 04:00:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-04-29 22:00:00') & (df['timestamp'] <= '2020-04-29 22:20:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-13 14:00:00') & (df['timestamp'] <= '2020-05-13 23:59:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-18 05:00:00') & (df['timestamp'] <= '2020-05-18 05:30:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-19 10:10:00') & (df['timestamp'] <= '2020-05-19 11:00:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-19 22:10:00') & (df['timestamp'] <= '2020-05-19 23:59:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-20 00:00:00') & (df['timestamp'] <= '2020-05-20 20:00:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-23 09:50:00') & (df['timestamp'] <= '2020-05-23 10:10:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-29 23:30:00') & (df['timestamp'] <= '2020-05-29 23:59:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-05-30 00:00:00') & (df['timestamp'] <= '2020-05-30 06:00:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-06-01 15:00:00') & (df['timestamp'] <= '2020-06-01 15:40:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-06-03 10:00:00') & (df['timestamp'] <= '2020-06-03 11:00:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-06-05 10:00:00') & (df['timestamp'] <= '2020-06-05 23:59:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-06-06 00:00:00') & (df['timestamp'] <= '2020-06-06 23:29:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-06-07 00:00:00') & (df['timestamp'] <= '2020-06-07 14:30:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-07-08 17:30:00') & (df['timestamp'] <= '2020-07-08 19:00:00'), 'y'] = 2
+        df.loc[(df['timestamp'] >= '2020-07-15 14:30:00') & (df['timestamp'] <= '2020-07-15 19:00:00'), 'y'] = 1
+        df.loc[(df['timestamp'] >= '2020-07-17 04:30:00') & (df['timestamp'] <= '2020-07-17 05:30:00'), 'y'] = 2
         data = df.iloc[1,1:]
         print(data)
 

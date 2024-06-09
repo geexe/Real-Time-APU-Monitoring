@@ -39,32 +39,11 @@ from sklearn.metrics import mean_squared_error
 
 from river import linear_model
 from river import tree
-model = linear_model.LinearRegression()
-model = tree.HoeffdingTreeRegressor(
+model = tree.HoeffdingTreeClassifier(
         grace_period=100,
-        model_selector_decay=0.9
     )
 
 class User(object):
-    """
-    User record
-
-    Args:
-        {
-          "symbol": "BTCUSDT",
-          "openPrice": "61729.27000000",
-          "highPrice": "61800.00000000",
-          "lowPrice": "61319.47000000",
-          "lastPrice": "61699.01000000",
-          "volume": "814.22297000",
-          "quoteVolume": "50138059.82771860",
-          "openTime": 1715732880000,
-          "closeTime": 1715736489761,
-          "firstId": 3599114332,
-          "lastId": 3599147596,
-          "count": 33265
-        }
-    """
 
     # Edit to monitoring data
     def __init__(self, timestamp, TP2,TP3,H1,DV_pressure,Reservoirs,Oil_temperature,Motor_current
@@ -87,7 +66,6 @@ class User(object):
         self.Caudal_impulses = Caudal_impulses
         self.y = y
 
-
 def dict_to_user(obj, ctx):
     """
     Converts object literal(dict) to a User instance.
@@ -102,10 +80,6 @@ def dict_to_user(obj, ctx):
     if obj is None:
         return None
 
-    #return User(name=obj['name'],
-    #            favorite_number=obj['favorite_number'],
-    #            favorite_color=obj['favorite_color'])
-
     # Edit to monitoring data
     return User(timestamp=obj["timestamp"], TP2=obj["TP2"], TP3= obj["TP3"],
                 H1=obj["H1"],DV_pressure=obj["DV_pressure"], Reservoirs=obj["Reservoirs"]
@@ -113,9 +87,6 @@ def dict_to_user(obj, ctx):
                 ,COMP=obj['COMP'], DV_eletric=obj['DV_eletric'],Towers=obj['Towers']
                 ,MPG=obj['MPG'], LPS=obj['LPS'], Pressure_switch=obj['Pressure_switch'],
                 Oil_level=obj['Oil_level'],Caudal_impulses=obj['Caudal_impulses'], y=obj["y"])
-
-
-
 
 def main(args):
     topic = args.topic
@@ -153,30 +124,7 @@ def main(args):
                 continue
 
             user = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
-            '''if user is not None:
-                print("User record {}: symbol: {}"
-                      "\topenPrice: {}"
-                      "\thighPrice: {}"
-                      "\tlowPrice: {}"
-                      "\tvolume: {}"
-                      "\topenTime: {}"
-                      "\tcloseTime: {}"
-                      "\tcount: {}"
-                      "\tlastPrice: {}\n"
-                      .format(msg.key(), 
-                              user.symbol,
-                              user.openPrice,
-                              user.highPrice, 
-                              user.lowPrice, 
-                              user.volume, 
-                              user.openTime, 
-                              user.closeTime, 
-                              user.count,
-                              user.lastPrice)
-                    )'''
-                
             # Create a dataframe for the consuming data to feed into the ML model.
-            # For example
             
             data = {'timstamp':user.timestamp, 'TP2':user.TP2,
                     'TP3':user.TP3,'H1':user.H1,
@@ -184,7 +132,7 @@ def main(args):
                     ,'Oil_temperature':user.Oil_temperature, 'Motor_current' : user.Motor_current
                     ,'COMP': user.COMP,'DV_eletric':user.DV_eletric,'Towers' : user.Towers
                     ,'MPG': user.MPG,'LPS':user.LPS, 'Pressure_switch' : user.Pressure_switch
-                    ,'Oil_level':user.Oil_level, 'Caudal_impulses':user.Caudal_impulses, 'y':user.y }
+                    ,'Oil_level':user.Oil_level, 'Caudal_impulses':user.Caudal_impulses}
             print(data)
             
             df = pd.DataFrame(data,index=[user.timestamp])
@@ -225,7 +173,5 @@ if __name__ == '__main__':
 
     main(parser.parse_args())
 
-
 # Example
-# python avro_consumer.py -b "localhost:9092" -s "http://localhost:8081" -t "BTCUSDT" -g "btc"
 # python avro_monitor_consumer.py -b "localhost:9092" -s "http://localhost:8081" -t "raw2"
