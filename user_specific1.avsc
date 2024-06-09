@@ -1,0 +1,31 @@
+{
+    "namespace": "confluent.io.examples.serialization.avro",
+    "name": "User",
+    "type": "record",
+    "fields": [
+        {
+            "name": "timestamp",
+			"type": "string"
+        },
+        {
+            "name": "TP2",
+            "type": "double"
+        },
+        {
+            "name": "TP3",
+            "type": "double"
+        },
+		{
+            "name": "H1",
+            "type": "double"
+        },
+		{
+            "name": "DV_pressure",
+            "type": "double"
+        },
+		{
+            "name": "Reservoirs",
+            "type": "double"
+        }
+    ]
+}
