@@ -36,6 +36,7 @@ from time import sleep
 import pandas as pd
 from pycaret.regression import load_model, predict_model
 from sklearn.metrics import mean_squared_error
+import random
 
 from river import linear_model
 from river import tree
@@ -45,12 +46,24 @@ from river import naive_bayes
 from river import datasets
 from river import evaluate
 from river import metrics
+from river import ensemble
+from river import preprocessing
 
 
 model = tree.HoeffdingTreeClassifier(
         grace_period=100,
     )
-# model2 = naive_bayes.BernoulliNB()
+model2 = tree.HoeffdingTreeClassifier(
+        grace_period=100,
+    )
+model3 = tree.HoeffdingTreeClassifier(
+        grace_period=100,
+    )
+bal_acc = metrics.BalancedAccuracy()
+bal_acc2 = metrics.BalancedAccuracy()
+bal_acc3 = metrics.BalancedAccuracy()
+saved_model = load_model('model5000')
+saved_model2 = load_model('model2')
 
 class User(object):
 
@@ -125,6 +138,8 @@ def main(args):
     consumer = Consumer(consumer_conf)
     consumer.subscribe([topic])
 
+
+
     while True:
         try:
             # SIGINT can't be handled when polling, limit timeout to 1 second.
@@ -135,22 +150,41 @@ def main(args):
             user = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
             # Create a dataframe for the consuming data to feed into the ML model.
             
-            data = {'timstamp':user.timestamp, 'TP2':user.TP2,
+            data = {'timestamp':user.timestamp, 'TP2':user.TP2,
                     'TP3':user.TP3,'H1':user.H1,
                     'DV_pressure':user.DV_pressure, 'Reservoirs':user.Reservoirs
                     ,'Oil_temperature':user.Oil_temperature, 'Motor_current' : user.Motor_current
                     ,'COMP': user.COMP,'DV_eletric':user.DV_eletric,'Towers' : user.Towers
                     ,'MPG': user.MPG,'LPS':user.LPS, 'Pressure_switch' : user.Pressure_switch
                     ,'Oil_level':user.Oil_level, 'Caudal_impulses':user.Caudal_impulses}
-            print(data)
+            data2 = {'timstamp':user.timestamp, 'TP2':user.TP2,
+                    'TP3':user.TP3,
+                    'DV_pressure':user.DV_pressure,
+                    'Oil_temperature':user.Oil_temperature, 'Motor_current' : user.Motor_current
+                    ,'Towers' : user.Towers
+                    ,'LPS':user.LPS, 'Pressure_switch' : user.Pressure_switch
+                    ,'Oil_level':user.Oil_level, 'Caudal_impulses':user.Caudal_impulses}
+            data3 = {'timstamp':user.timestamp, 'TP2':user.TP2,
+                    'TP3':user.TP3,
+                    'DV_pressure':user.DV_pressure,
+                    'Oil_temperature':user.Oil_temperature, 'Motor_current' : user.Motor_current
+                    ,'COMP': user.COMP ,'Towers' : user.Towers
+                    ,'LPS':user.LPS, 'Pressure_switch' : user.Pressure_switch
+                    ,'Oil_level':user.Oil_level, 'Caudal_impulses':user.Caudal_impulses}
             
-            df = pd.DataFrame(data,index=[user.timestamp])
-          
-            saved_lr = load_model('model5000')
-            predictions = predict_model(saved_lr, data=df)
+            print(data)
             
             # Use offline (Batch) model to predict result from streaming
             # print(type(predictions))
+            df = pd.DataFrame(data,index=[user.timestamp])
+            predictions = predict_model(saved_model, data=df)
+            
+            print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.y)
+            print(mean_squared_error([user.y] , [predictions.iloc[0]['prediction_label']] ) )
+
+            df2 = pd.DataFrame(data2,index=[user.timestamp])
+            predictions = predict_model(saved_model2, data=df2)
+            
             print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.y)
             print(mean_squared_error([user.y] , [predictions.iloc[0]['prediction_label']] ) )
 
@@ -160,11 +194,40 @@ def main(args):
             model.learn_one(data, user.y)
             print("y_pred = ",y_pred)
             print("y_prob = ",y_prob)
+            bal_acc.update(user.y, y_pred)
+            print(bal_acc)
             
-            # y_pred2 = model2.predict_one(data)
-            # model2.learn_one(data, user.y)
-            # print("y_pred2 = ",y_pred2)
+            y_pred2 = model2.predict_one(data2)
+            y_prob2 = model2.predict_proba_one(data2)
+            model2.learn_one(data2, user.y)
+            print("y_pred2 = ",y_pred2)
+            print("y_prob2 = ",y_prob2)
+            bal_acc2.update(user.y, y_pred2)
+            print(bal_acc2)
 
+            try:
+                predicted = [y_pred, y_pred2]
+                weight = [bal_acc.get(), bal_acc2.get()]
+                total_weight = sum(weight)
+                prob = []
+                for i in range(len(weight)):
+                    if(total_weight == 0):
+                        prob.append(0)
+                    else:
+                        prob.append(weight[i]/total_weight)
+                chosen_element = random.choices(predicted, weights=prob, k=1)[0]
+                print("Chosen:", chosen_element)
+            except:
+                continue
+            
+
+            '''y_pred3 = model3.predict_one(data3)
+            y_prob3 = model3.predict_proba_one(data3)
+            model3.learn_one(data3, user.y)
+            print("y_pred3 = ",y_pred3)
+            print("y_prob3 = ",y_prob3)
+            bal_acc3.update(user.y, y_pred3)
+            print("Balanced Accuracy: ", bal_acc3)'''
 
         except KeyboardInterrupt:
             break
