@@ -37,6 +37,7 @@ import pandas as pd
 from pycaret.regression import load_model, predict_model
 from sklearn.metrics import mean_squared_error
 import random
+from collections import defaultdict
 
 from river import linear_model
 from river import tree
@@ -49,7 +50,6 @@ from river import metrics
 from river import ensemble
 from river import preprocessing
 
-
 model = tree.HoeffdingTreeClassifier(
         grace_period=100,
     )
@@ -59,10 +59,12 @@ model2 = tree.HoeffdingTreeClassifier(
 model3 = tree.HoeffdingTreeClassifier(
         grace_period=100,
     )
-bal_acc = metrics.BalancedAccuracy()
-bal_acc2 = metrics.BalancedAccuracy()
-bal_acc3 = metrics.BalancedAccuracy()
-saved_model = load_model('model5000')
+bal_acc_off = metrics.Accuracy()
+bal_acc_off2 = metrics.Accuracy()
+bal_acc = metrics.Accuracy()
+bal_acc2 = metrics.Accuracy()
+bal_acc3 = metrics.Accuracy()
+saved_model = load_model('model1')
 saved_model2 = load_model('model2')
 
 class User(object):
@@ -110,6 +112,31 @@ def dict_to_user(obj, ctx):
                 ,MPG=obj['MPG'], LPS=obj['LPS'], Pressure_switch=obj['Pressure_switch'],
                 Oil_level=obj['Oil_level'],Caudal_impulses=obj['Caudal_impulses'], y=obj["y"])
 
+def find_majority_element_with_weight(nums, weights):
+    n = len(nums)
+    
+    # Dictionary to store cumulative weights by class
+    weighted_counts = defaultdict(int)
+    
+    # Accumulate weights by class
+    for num, weight in zip(nums, weights):
+        weighted_counts[num] += weight
+    
+    # Find the candidate with the maximum weighted count
+    candidate, max_count = None, 0
+    for num, weighted_count in weighted_counts.items():
+        if weighted_count > max_count:
+            candidate = num
+            max_count = weighted_count
+    
+    # Verify the candidate
+    weighted_threshold = sum(weights) / 2
+    if max_count > weighted_threshold:
+        return candidate
+    else:
+        return None
+
+
 def main(args):
     topic = args.topic
     is_specific = args.specific == "true"
@@ -138,8 +165,8 @@ def main(args):
     consumer = Consumer(consumer_conf)
     consumer.subscribe([topic])
 
-
-
+    y_true = []
+    y_hat = []
     while True:
         try:
             # SIGINT can't be handled when polling, limit timeout to 1 second.
@@ -178,15 +205,22 @@ def main(args):
             # print(type(predictions))
             df = pd.DataFrame(data,index=[user.timestamp])
             predictions = predict_model(saved_model, data=df)
-            
+            y_pred_off = predictions.iloc[0]['prediction_label']
             print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.y)
-            print(mean_squared_error([user.y] , [predictions.iloc[0]['prediction_label']] ) )
-
+            bal_acc_off.update(user.y, y_pred_off)
+            y_true.append(user.y)
+            y_hat.append(y_pred_off)
+            print(bal_acc_off)
+            print(y_true)
+            print(y_hat)
+            
             df2 = pd.DataFrame(data2,index=[user.timestamp])
             predictions = predict_model(saved_model2, data=df2)
-            
+            y_pred_off2 = predictions.iloc[0]['prediction_label']
             print("Predicted", predictions.iloc[0]['prediction_label']," VS Actual=",user.y)
             print(mean_squared_error([user.y] , [predictions.iloc[0]['prediction_label']] ) )
+            bal_acc_off2.update(user.y, y_pred_off)
+            print(bal_acc_off2)
 
             # Online (Real-time) model to predict result from streaming
             y_pred = model.predict_one(data)
@@ -194,40 +228,36 @@ def main(args):
             model.learn_one(data, user.y)
             print("y_pred = ",y_pred)
             print("y_prob = ",y_prob)
-            bal_acc.update(user.y, y_pred)
-            print(bal_acc)
+            if(y_pred == None):
+                pass
+            else:
+                bal_acc.update(user.y, y_pred)
+                print(bal_acc)
             
             y_pred2 = model2.predict_one(data2)
             y_prob2 = model2.predict_proba_one(data2)
             model2.learn_one(data2, user.y)
             print("y_pred2 = ",y_pred2)
             print("y_prob2 = ",y_prob2)
-            bal_acc2.update(user.y, y_pred2)
-            print(bal_acc2)
+            if(y_pred2 == None):
+                pass
+            else:
+                bal_acc2.update(user.y, y_pred2)
+                print(bal_acc2)
 
             try:
-                predicted = [y_pred, y_pred2]
-                weight = [bal_acc.get(), bal_acc2.get()]
-                total_weight = sum(weight)
-                prob = []
-                for i in range(len(weight)):
-                    if(total_weight == 0):
-                        prob.append(0)
-                    else:
-                        prob.append(weight[i]/total_weight)
-                chosen_element = random.choices(predicted, weights=prob, k=1)[0]
-                print("Chosen:", chosen_element)
-            except:
-                continue
-            
+                predicted = [y_pred_off, y_pred_off2, y_pred, y_pred2]
+                weight = [bal_acc_off.get(), bal_acc_off2.get(), bal_acc.get(), bal_acc2.get()]
+                print(predicted)
+                print(weight)
 
-            '''y_pred3 = model3.predict_one(data3)
-            y_prob3 = model3.predict_proba_one(data3)
-            model3.learn_one(data3, user.y)
-            print("y_pred3 = ",y_pred3)
-            print("y_prob3 = ",y_prob3)
-            bal_acc3.update(user.y, y_pred3)
-            print("Balanced Accuracy: ", bal_acc3)'''
+                majority_element = find_majority_element_with_weight(predicted, weight)
+                if majority_element is not None:
+                    print(f"The majority element is {majority_element}.")
+                else:
+                    print("There is no majority element.")
+            except:
+                pass
 
         except KeyboardInterrupt:
             break

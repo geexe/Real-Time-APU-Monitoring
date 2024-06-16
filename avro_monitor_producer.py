@@ -153,8 +153,9 @@ def main(args):
     #Create topic with a number of partition and replicas
     admin_client = AdminClient(producer_conf)
     topic_list = []
-    topic_list.append(NewTopic(topic, 2, 3))
+    topic_list.append(NewTopic(topic, 3, 3))
     admin_client.create_topics(topic_list)
+    print(topic_list)
 
   
     while True:
@@ -189,9 +190,12 @@ def main(args):
         df.loc[(df['timestamp'] >= '2020-07-17 04:30:00') & (df['timestamp'] <= '2020-07-17 05:30:00'), 'y'] = 2
         split = 0.55
         # df_offline = df.iloc[0:int(split*len(df)),]
-        df_online = df.iloc[int(split*len(df)):,]
+        # df_online = df.iloc[int(split*len(df)):,]
         # df_online = df_online.loc[df_online["y"] == 2]
-
+        df_online = pd.concat([
+            df.loc[(df['timestamp'] >= '2020-06-06 23:58:00') & (df['timestamp'] <= '2020-06-07 00:03:00')],
+            df.loc[(df['timestamp'] >= '2020-07-15 14:27:00') & (df['timestamp'] <= '2020-07-15 14:33:00')]
+        ])
         for i in range(len(df_online)):
             data = df_online.iloc[i,1:]
             print(data)
