@@ -28,6 +28,7 @@
 import argparse
 import os
 
+#Kafka
 from confluent_kafka import Consumer
 from confluent_kafka.serialization import SerializationContext, MessageField
 from confluent_kafka.schema_registry import SchemaRegistryClient
@@ -39,6 +40,12 @@ from sklearn.metrics import mean_squared_error
 import random
 from collections import defaultdict
 
+#Graph
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+#Steaming Model
 from river import linear_model
 from river import tree
 from river import multiclass
@@ -49,6 +56,8 @@ from river import evaluate
 from river import metrics
 from river import ensemble
 from river import preprocessing
+
+from datetime import datetime
 
 model = tree.HoeffdingTreeClassifier(
         grace_period=100,
@@ -64,6 +73,8 @@ bal_acc_off2 = metrics.Accuracy()
 bal_acc = metrics.Accuracy()
 bal_acc2 = metrics.Accuracy()
 bal_acc3 = metrics.Accuracy()
+bal_acc_all = metrics.BalancedAccuracy()
+acc_all = metrics.Accuracy()
 saved_model = load_model('model1')
 saved_model2 = load_model('model2')
 
@@ -135,7 +146,80 @@ def find_majority_element_with_weight(nums, weights):
         return candidate
     else:
         return None
+# Data storage for graph
+time_graph = []
+y_pred_graph = []
+y_actual_graph = []  # List to store actual values
+motor_current_graph = []  # List to store Motor_current values
+tp2_graph = []  # List to store TP2 values
+tp3_graph = []  # List to store TP3 values
+y_actual_graph_offline = []
+y_majority=[]
+#AUC
+bal_acc_off_graph=[]
+bal_acc_off2_graph=[]
+bal_acc_graph=[]
+bal_acc2_graph=[]
+all_graph=[]
 
+
+
+# Set up the figure and axes
+fig, (ax_pred, ax_motor_current, ax_tp2, ax_tp3,ax_auc) = plt.subplots(5, 1, figsize=(10, 16))
+line_pred, = ax_pred.plot_date(time_graph, y_pred_graph, '>',color='black', label='Predicted Value Online')
+line_actual, = ax_pred.plot_date(time_graph, y_actual_graph, '-', color='red', label='Actual Value')
+line_actual_offline, = ax_pred.plot_date(time_graph, y_actual_graph_offline, '<', color='blue', label='Predicted Value Offline')
+line_actual_majority,= ax_pred.plot_date(time_graph, y_majority, 'o', color='green', label='Predict Majority')
+
+ax_pred.set_xlabel('Timestamp')
+ax_pred.set_ylabel('Value')
+ax_pred.set_title('Real-time Prediction Plot')
+ax_pred.set_ylim(-1,3)
+ax_pred.legend(loc='upper right')
+
+ax_motor_current.set_xlabel('Timestamp')
+ax_motor_current.set_ylabel('Motor Current')
+ax_motor_current.set_title('Motor Current Plot')
+
+ax_tp2.set_xlabel('Timestamp')
+ax_tp2.set_ylabel('TP2')
+ax_tp2.set_title('TP2 Plot')
+
+ax_tp3.set_xlabel('Timestamp')
+ax_tp3.set_ylabel('TP3')
+ax_tp3.set_title('TP3 Plot')
+
+#AUC
+'''         line_bal_acc_off.set_data(time_graph, bal_acc_off_graph)  # Predicted values
+            line_bal_acc_off2.set_data(time_graph, bal_acc_off2_graph)  # Actual values
+            line_bal_acc.set_data(time_graph, bal_acc_graph)
+            line_bal_acc2.set_data(time_graph, bal_acc2_graph)'''
+
+
+line_bal_acc_off, = ax_auc.plot_date(time_graph, bal_acc_off_graph, '>',color='black', label='Balance Accuracy Offline M1')
+line_bal_acc_off2, = ax_auc.plot_date(time_graph, bal_acc_off2_graph, 'D', color='red', label='Balance Accuracy Offline M2')
+line_bal_acc, = ax_auc.plot_date(time_graph, bal_acc_graph, '<', color='blue', label='Balance Accuracy Online M1')
+line_bal_acc2,= ax_auc.plot_date(time_graph, bal_acc2_graph, 'o', color='green', label='Balance Accuracy Online M2')
+line_acc_all,= ax_auc.plot_date(time_graph, all_graph, '-', color='silver', label='Accuracy Majority')
+
+
+
+ax_auc.set_xlabel('Timestamp')
+ax_auc.set_ylabel('Value')
+ax_auc.set_title('Accuracy Plot')
+ax_auc.legend(loc='upper right')
+ax_auc.set_ylim(0,1.2)
+
+
+# Set date format on x-axis
+date_format = mdates.DateFormatter('%d/%m/%Y %H:%M:%S')
+ax_pred.xaxis.set_major_formatter(date_format)
+ax_motor_current.xaxis.set_major_formatter(date_format)
+ax_tp2.xaxis.set_major_formatter(date_format)
+ax_tp3.xaxis.set_major_formatter(date_format)
+ax_auc.xaxis.set_major_formatter(date_format)
+
+fig.autofmt_xdate()  # Auto format the x-axis labels for better appearance
 
 def main(args):
     topic = args.topic
@@ -164,15 +248,17 @@ def main(args):
 
     consumer = Consumer(consumer_conf)
     consumer.subscribe([topic])
-
     y_true = []
     y_hat = []
-    while True:
+    iteration = 0
+    fp_count = 0
+
+    def update_plot(frame):
+        
         try:
-            # SIGINT can't be handled when polling, limit timeout to 1 second.
             msg = consumer.poll(1.0)
             if msg is None:
-                continue
+                return
 
             user = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
             # Create a dataframe for the consuming data to feed into the ML model.
@@ -254,17 +340,79 @@ def main(args):
                 majority_element = find_majority_element_with_weight(predicted, weight)
                 if majority_element is not None:
                     print(f"The majority element is {majority_element}.")
+                    bal_acc_all.update(user.y, majority_element)
+                    acc_all.update(user.y, majority_element)
+                    print(bal_acc_all)
+                    print(acc_all)
+                    if (majority_element == 2 or majority_element == 1) and user.y == 0:
+                        fp_count += 1
+                    print("False Positive: ", fp_count)
                 else:
                     print("There is no majority element.")
             except:
                 pass
 
+            # Convert timestamp string to datetime object
+            datetime_obj = datetime.strptime(user.timestamp, '%Y-%m-%d %H:%M:%S')
+            time_graph.append(datetime_obj)
+            y_pred_graph.append(y_pred)
+            y_actual_graph.append(user.y)  # Append actual value to the list
+            motor_current_graph.append(user.Motor_current)  # Append Motor_current to the list
+            tp2_graph.append(user.TP2)  # Append TP2 to the list
+            tp3_graph.append(user.TP3)  # Append TP3 to the list
+            #h1_graph.append(user.H1)    # Append H1 to the list
+            y_actual_graph_offline.append(predictions['prediction_label'])
+            y_majority.append(majority_element)
+
+            #AUC append
+            bal_acc_off_graph.append(bal_acc_off.get())  # Extracting the accuracy value
+            bal_acc_off2_graph.append(bal_acc_off2.get())  # Extracting the accuracy value
+            bal_acc_graph.append(bal_acc.get())  # Extracting the accuracy value
+            bal_acc2_graph.append(bal_acc2.get())  # Extracting the accuracy value
+            all_graph.append(acc_all.get())  # Extracting the accuracy value
+
+
+            # Update plot data
+            line_pred.set_data(time_graph, y_pred_graph)  # Predicted values
+            line_actual.set_data(time_graph, y_actual_graph)  # Actual values
+            line_actual_offline.set_data(time_graph, y_actual_graph_offline)
+            line_actual_majority.set_data(time_graph, y_majority)
+            ax_pred.relim()
+            ax_pred.autoscale_view()
+
+            # Update motor current plot data
+            ax_motor_current.plot_date(time_graph, motor_current_graph, '-', label='Motor Current')
+            ax_motor_current.relim()
+            ax_motor_current.autoscale_view()
+
+            # Update TP2 plot data
+            ax_tp2.plot_date(time_graph, tp2_graph, '-', label='TP2')
+            ax_tp2.relim()
+            ax_tp2.autoscale_view()
+
+            # Update TP3 plot data
+            ax_tp3.plot_date(time_graph, tp3_graph, '-', label='TP3')
+            ax_tp3.relim()
+            ax_tp3.autoscale_view()
+
+        # Update plot data AUC
+            line_bal_acc_off.set_data(time_graph, bal_acc_off_graph)  # Predicted values
+            line_bal_acc_off2.set_data(time_graph, bal_acc_off2_graph)  # Actual values
+            line_bal_acc.set_data(time_graph, bal_acc_graph)
+            line_bal_acc2.set_data(time_graph, bal_acc2_graph)
+            line_acc_all.set_data(time_graph, all_graph)
+            ax_auc.relim()
+            ax_auc.autoscale_view()
+            
         except KeyboardInterrupt:
-            break
+            consumer.close()
+            plt.close()
+            return
 
         sleep(1)
 
-    consumer.close()
+    ani = animation.FuncAnimation(fig, update_plot, interval=1000)
+    plt.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="AvroDeserializer example")

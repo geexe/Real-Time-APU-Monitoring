@@ -193,8 +193,16 @@ def main(args):
         # df_online = df.iloc[int(split*len(df)):,]
         # df_online = df_online.loc[df_online["y"] == 2]
         df_online = pd.concat([
-            df.loc[(df['timestamp'] >= '2020-06-06 23:58:00') & (df['timestamp'] <= '2020-06-07 00:03:00')],
-            df.loc[(df['timestamp'] >= '2020-07-15 14:27:00') & (df['timestamp'] <= '2020-07-15 14:33:00')]
+            df.loc[(df['timestamp'] >= '2020-05-29 23:27:00') & (df['timestamp'] <= '2020-05-29 23:33:00')],
+            df.loc[(df['timestamp'] >= '2020-05-29 23:57:00') & (df['timestamp'] <= '2020-05-30 00:03:00')],
+            df.loc[(df['timestamp'] >= '2020-06-01 14:57:00') & (df['timestamp'] <= '2020-06-01 15:03:00')],
+            df.loc[(df['timestamp'] >= '2020-06-03 09:57:00') & (df['timestamp'] <= '2020-06-03 10:03:00')],
+            df.loc[(df['timestamp'] >= '2020-06-05 09:57:00') & (df['timestamp'] <= '2020-06-05 10:03:00')],
+            df.loc[(df['timestamp'] >= '2020-06-05 23:57:00') & (df['timestamp'] <= '2020-06-06 00:03:00')],
+            df.loc[(df['timestamp'] >= '2020-06-06 23:57:00') & (df['timestamp'] <= '2020-06-07 00:03:00')],
+            df.loc[(df['timestamp'] >= '2020-07-08 17:27:00') & (df['timestamp'] <= '2020-07-08 17:33:00')],
+            df.loc[(df['timestamp'] >= '2020-07-15 14:27:00') & (df['timestamp'] <= '2020-07-15 14:33:00')],
+            df.loc[(df['timestamp'] >= '2020-07-17 04:27:00') & (df['timestamp'] <= '2020-07-17 04:33:00')],
         ])
         for i in range(len(df_online)):
             data = df_online.iloc[i,1:]
